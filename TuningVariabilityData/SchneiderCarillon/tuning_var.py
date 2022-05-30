@@ -22,7 +22,7 @@ for k, v in all_cat.items():
     tot += np.sum((v-v.mean())**2)
     cnt += len(v)
     all_vals.extend(v - v.mean())
-np.save("interval_deviation_from_mean.txt", all_vals)
+np.savetxt("interval_deviation_from_mean.txt", all_vals)
 print(f"Total std: {(tot/cnt)**0.5}")
 
 
