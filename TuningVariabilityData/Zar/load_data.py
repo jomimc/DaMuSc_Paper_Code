@@ -39,7 +39,7 @@ def align_intervals(data):
     return aligned
 
 
-def get_errors(mat):
+def get_deviation_from_mean(mat):
     return np.concatenate([mat[:,i] - np.nanmean(mat[:,i]) for i in range(mat.shape[1])])
 
 
@@ -66,11 +66,31 @@ if __name__ == "__main__":
     mel = load_melodic_intervals()
     harm = load_harmonic_intervals()
 
-    keys = list(mel.keys())
-    diff = [d for k in keys for d in get_mel_harm_diff(mel[k][:,0], harm[k][:,0])]
-    mel_err = np.concatenate([v[:,1] for v in mel.values()])
-    harm_err = np.concatenate([v[:,1] for v in harm.values()])
-    print(mel_err.mean())
-    print(harm_err.mean())
+#   keys = list(mel.keys())
+#   diff = [d for k in keys for d in get_mel_harm_diff(mel[k][:,0], harm[k][:,0])]
+
+    mel_gmm_std = np.concatenate([v[:,1] for v in mel.values()])
+    harm_gmm_std = np.concatenate([v[:,1] for v in harm.values()])
+
+    print("Standard deviations of Guassian mixture models")
+    print("Melodic average: ", mel_gmm_std.mean())
+    print("Harmonic average ", harm_gmm_std.mean())
+
+
+    mel_aligned = align_intervals(mel)
+    har_aligned = align_intervals(harm)
+
+    mel_err_mat = get_deviation_from_mean(mel_aligned)
+    har_err_mat = get_deviation_from_mean(har_aligned)
+
+    np.savetxt('melodic_scale_note_deviation_from_mean.txt', mel_err_mat)
+    np.savetxt('harmonic_scale_note_deviation_from_mean.txt', har_err_mat)
+
+    mel_err = np.nanstd(mel_err_mat)
+    har_err = np.nanstd(har_err_mat)
+    
+    print("Standard deviation of aligned notes across different recordings")
+    print("Melodic: ", mel_err)
+    print("Harmonic: ", har_err)
 
 
