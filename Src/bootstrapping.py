@@ -5,6 +5,7 @@ import pickle
 from multiprocessing import Pool
 import numpy as np
 import pandas as pd
+from scipy.spatial.distance import cdist
 from scipy.stats import mannwhitneyu, lognorm, norm, binom, entropy, ks_1samp
 from sklearn.manifold  import TSNE
 from sklearn.preprocessing import StandardScaler
@@ -91,6 +92,12 @@ def boot_list(df, ysamp='step_intervals'):
         for n in range(4, 10):
             out.update({f"{xsamp}_{n}": boot_hist_list(df.loc[df.n_notes==n], xsamp, ysamp, bins, s=s)})
 
+    xsamp_list = ['Theory', 'Measured']
+    for xsamp, idx in zip(xsamp_list, [df.Theory=='Y', df.Theory=='N']):
+        out.update({xsamp: boot_hist_list(df.loc[idx], '', ysamp, bins)})
+        for n in range(4, 10):
+            out.update({f"{xsamp}_{n}": boot_hist_list(df.loc[(idx)&(df.n_notes==n)], '', ysamp, bins)})
+
     inst_list = ['Idiophone', 'Aerophone', 'Chordophone']
     for inst in inst_list:
         out.update({inst: boot_hist_list(df.loc[df.Inst_type==inst], '', ysamp, bins)})
@@ -170,13 +177,10 @@ def boot_int_prob_lognorm_all(refresh=True, nrep=1000):
 
     path = PATH_DATA.joinpath(f"int_prob_lognorm_shuffle.npy")
     _ = boot_int_prob_lognorm(df.loc[idx_list[0]], path, refresh=refresh, mode="shuffle", nrep=nrep)
-#   _ = boot_int_prob_lognorm(df.loc[idx_list[0]], path, refresh=True, mode="shuffle", nrep=nrep)
 
     path = PATH_DATA.joinpath(f"int_prob_lognorm_shuffle_nonequidistant.npy")
     idx = (df.Reduced_scale=='N') & (df.irange>100)
-    print(np.sum(idx))
-#   _ = boot_int_prob_lognorm(df.loc[idx], path, refresh=refresh, mode="shuffle", nrep=nrep)
-    _ = boot_int_prob_lognorm(df.loc[idx], path, refresh=True, mode="shuffle", nrep=nrep)
+    _ = boot_int_prob_lognorm(df.loc[idx], path, refresh=refresh, mode="shuffle", nrep=nrep)
 
     for i in range(10):
         path = PATH_DATA.joinpath(f"int_prob_lognorm_alt{i}.npy")
@@ -217,52 +221,34 @@ def boot_step_int(refresh=True, nrep=1000, nsamp=[5], ysamp=['step_int'], xsamp=
         return res
     
 
+
+### Not quite bootstrapping, but other functions required to make figures
+
 def run_tsne():
     poss = np.cumsum(np.load('../PossibleScales/possible_7_20_60_400.npy')[:,:-1], axis=1)
     tsne = TSNE(perplexity=20).fit(poss)
     np.save('../tsne_poss_7_20_60_400.npy', tsne.embedding_)
 
 
-#ef get_umap_embedding(X):
-#   reducer = umap.UMAP()
-#   return reducer.fit_transform(StandardScaler().fit_transform(X))
+def get_grid_close_far():
+    df = process_csv.process_data()
+    for n in [5, 7]:
+        print(n)
+        scale = np.array([x for x in df.loc[df.n_notes==n, 'scale']])[:,1:-1]
+
+        iparams = {5:"20_60_420", 7:"20_60_320"}[n]
+        path = f"possible_{n}_{iparams}"
+        poss = np.load(f"../PossibleScales/{path}.npy")
+
+        poss_scale = np.cumsum(poss, axis=1)[:,:-1]
+        real_grid_dist = cdist(poss_scale, scale, metric='cityblock') / (n - 1)
+        idx_close = real_grid_dist.min(axis=1)<=10
+
+        embedding = TSNE(perplexity=20).fit(poss_scale).embedding_
+        np.save(f'../Figures/Data/tsne_grid_close_{n}.npy', embedding[idx_close])
+        np.save(f'../Figures/Data/tsne_grid_far_{n}.npy', embedding[idx_close==False])
 
 
-#ef run_umap():
-#   poss = np.cumsum(np.load('../PossibleScales/possible_7_20_60_400.npy')[:,:-1], axis=1)
-#   embedding = get_umap_embedding(poss)
-#   np.save('../umap_poss_7_20_60_400.npy', embedding)
-
-
-def tmp_fn(df, ysamp='scale', xsamp='SocID', s=1, nmax=0):
-    idx_samp = utils.sample_df_index(df, xsamp, s)
-    if nmax == 0:
-        nmax = len(idx_samp)
-    Y = utils.sample_df_value(df, ysamp, xsamp, s)
-    bins = np.arange(15, 5000, 30)
-    dx = np.diff(bins[:2])
-    X = bins[:-1] + dx / 2.
-
-    P = []
-
-    for i in range(1, nmax):
-        # Get maximum-likelihood lognormal distribution
-        idx = np.random.choice(idx_samp, size=i, replace=False)
-        Y = np.array([x for j in idx for x in df.loc[j, 'scale']])
-        shape, loc, scale = [0.93, -45.9, 605.4]
-        params = lognorm.fit(Y, loc=loc, scale=scale)
-
-        # Get probability of finding interval in each bin
-        bin_prob = np.diff(lognorm.cdf(bins, *params))
-
-        # Count intervals in each bin
-        count = np.histogram(Y, bins=bins)[0]
-        mean_euc = np.sum(bin_prob * count) / np.sum(count)
-        mean_geo = np.product((bin_prob**(1/np.sum(count)))**count)
-        ks_stat = ks_1samp(Y, lognorm.cdf, args=params)[1]
-#       P.append([mean_geo, mean_euc])
-        P.append([ks_stat])
-    return np.array(P)
 
 
 
@@ -271,14 +257,15 @@ def boot_all():
     _ = scale_degree(df)
     for ysamp in ['step_intervals', 'scale', 'tonic_intervals', 'all_intervals']:
         _ = boot_list(df, ysamp)
-    boot_int_prob_lognorm_all(refresh=False)
+    boot_int_prob_lognorm_all()
     boot_step_int()
 
 
 if __name__ == "__main__":
 
 #   boot_all()
-    boot_int_prob_lognorm_all(refresh=False)
+#   boot_int_prob_lognorm_all(refresh=False)
+    get_grid_close_far()
 
 #   run_umap()
 

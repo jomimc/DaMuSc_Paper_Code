@@ -183,14 +183,17 @@ def si6():
 
 def si7(df):
     fig, ax = plt.subplots(6,2,figsize=(12,12))
+    fig.subplots_adjust(hspace=0.5)
     multiple_dist(ax[:,0], 'step_intervals')
     multiple_dist(ax[:,1], 'scale')
+    ax[0,0].legend(loc='upper right', bbox_to_anchor=(1.65, 1.6), frameon=False, ncol=4)
+#   ax[0,1].legend(loc='upper right', bbox_to_anchor=(1.1, 1.3), frameon=False, ncol=4)
     ax[5,0].set_xlabel('Step / cents')
     ax[5,1].set_xlabel('Note / cents')
     for i in range(6):
         ax[i,0].set_ylabel("Density")
-        new_figs.set_ticks(ax[i,0], 100, 50, '%d', 0.005, 0.00125, '%4.3f')
-        new_figs.set_ticks(ax[i,1], 200, 100, '%d', 0.001, 0.00025, '%5.3f')
+        new_figs.set_xticks(ax[i,0], 100, 50, '%d')#0.005, 0.00125, '%4.3f')
+        new_figs.set_xticks(ax[i,1], 200, 100, '%d')#0.001, 0.00025, '%5.3f')
 
         lo, hi = ax[i,0].get_ylim()
         ax[i,0].set_ylim(0, hi)
@@ -212,11 +215,13 @@ def multiple_dist(ax, stem='scale'):
     data = pickle.load(open(PATH_DATA.joinpath(f"{stem}.pickle"), 'rb'))
     X = data['X']
     for i, n in enumerate(range(4, 10)):
-        m, lo, hi = data[f"SocID_{n}"]
-        ax[i].plot(X, m, '-', label=f"N={n}", c=sns.color_palette()[i])
-        ax[i].fill_between(X, lo, hi, alpha=0.5, color=sns.color_palette()[i])
-#       set_ticks(ax[i], 200, 100, '%d', 0.001, 0.00025, '%5.3f')
-        ax[i].legend(loc='upper left', frameon=False)
+        for j, ysamp in enumerate(['Region', 'SocID', 'Theory', 'Measured']):
+            m, lo, hi = data[f"{ysamp}_{n}"]
+            ax[i].plot(X, m, '-', label=ysamp, c=sns.color_palette()[j])
+            ax[i].fill_between(X, lo, hi, alpha=0.5, color=sns.color_palette()[j])
+#           set_ticks(ax[i], 200, 100, '%d', 0.001, 0.00025, '%5.3f')
+#           ax[i].legend(loc='upper left', frameon=False)
+        ax[i].set_title(f"N={n}", loc='left')
 
 #   for i in [2,5]:
 #   ax[j].set_xlim(0, xlim[j])

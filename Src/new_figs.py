@@ -237,29 +237,30 @@ def fig3(df, ysamp='scale', xsamp='SocID', s=5):
 
     for a in ax:
         a.set_xlim(0, 3000)
-        set_xticks(a, 600, 200, '%d')
-        a.set_ylabel('Probability')
         a.grid()
-#       a.spines['top'].set_visible(False)
-#       a.spines['right'].set_visible(False)
     for a in ax[:2]:
         a.set_ylabel('Probability / %')
-    ax[0].set_xlabel('Scale note / cents')
+    ax[0].set_xlabel(r'Scale note / cents')
     ax[1].set_xlabel('Step size / cents')
     ax[-1].set_xlabel('Scale note / cents')
 
     for a in ax[2:]:
+        set_xticks(a, 600, 200, '%d')
+        a.set_ylabel('Probability')
+        a.set_yticks([10.**x for x in [-15, -10, -5]])
         ylo, yhi = a.get_ylim()
         for x in [200, 700]:
             a.plot([x]*2, [ylo, yhi], '--', c='grey')
         a.set_ylim(ylo, yhi)
+
 
     fs = 14
     x = [-0.12, -0.24] + [-0.07]*3
     for i, b in zip([0,1,2,3,4], 'ABCDE'):
         ax[i].text(x[i], 1.05, b, transform=ax[i].transAxes, fontsize=fs)
 
-    set_xticks(ax[1], 200,  50, '%d')
+    set_ticks(ax[0], 600, 200, '%d', 1, 0.5, '%d')
+    set_ticks(ax[1], 200,  50, '%d', 2, 1, '%d')
     ax[1].set_xlim(0, 1000)
 
     fig.savefig(PATH_FIG.joinpath(f"fig3.pdf"), bbox_inches='tight')
@@ -273,14 +274,17 @@ def step_intervals(ax, df, n_rep=10, dx=10, xhi=1000, xmax=5000):
     new_ints = [x for i in range(n_rep) for y in df.Intervals for x in np.diff(sorted(lognorm.rvs(*params, len(y))))]
     bins = np.arange(0, xmax, dx)
     X = bins[:-1] + dx / 2
-    ax.plot(X, np.histogram(new_ints, bins=bins, density=True)[0], '--k', label='Lognorm')
+    hist_lognorm = np.histogram(new_ints, bins=bins, density=True)[0]
+    ax.plot(X, hist_lognorm/hist_lognorm.sum()*100, '--k', label='Lognorm')
 
     X = bins[:-1] + np.sum(bins[:2]) / 2
     data = np.load(PATH_DATA.joinpath(f"step_int_density.npy"))
     Y = data.mean(axis=0)
+    Ynorm = Y.sum() / 100
     col = sns.color_palette()[0]
-    ax.plot(X, Y*100, label='Original', c=col)
-    ax.fill_between(X, *np.quantile(data*100, [0.025, 0.975], axis=0), color=col, alpha=0.5)
+    ax.plot(X, Y/Ynorm, label='Original', c=col)
+    ylo, yhi = np.quantile(data/Ynorm, [0.025, 0.975], axis=0)
+    ax.fill_between(X, ylo, yhi, color=col, alpha=0.5)
     ax.legend(loc='upper right', frameon=False)
     ax.set_xlim(0, xhi)
 
@@ -450,7 +454,7 @@ def scale_degree(ax):
 def multiple_dist(ax):
     lbl = ['Region', 'SocID', 'Theory', 'Measured']
 #   lbl = ['Theory', 'Measured']
-    path_stem = ['stepacent_intervals', 'scale']
+    path_stem = ['step_intervals', 'scale']
     xlbls = ['Step / cents', 'Note / cents']
     xlim = [530, 1270]
     cols = Paired_12.hex_colors
@@ -507,7 +511,7 @@ def get_umap_embedding(X):
     return reducer.fit_transform(StandardScaler().fit_transform(X))
 
 
-def fig6(df, n=7, eps=2, min_samp=5, n_ex=4, seed=81595, annot=True, embed_alg='tsne'):
+def fig6(df, n=7, eps=2, min_samp=5, n_ex=4, seed=52542, annot=True, embed_alg='tsne'):
     if seed == 0:
         seed = int(str(time.time()).split('.')[1])
     np.random.seed(seed)
@@ -537,10 +541,10 @@ def fig6(df, n=7, eps=2, min_samp=5, n_ex=4, seed=81595, annot=True, embed_alg='
 
     if annot:
         diatonic_modes = ['Ionian', 'Aeolian', 'Dorian', 'Phrygian', 'Lydian', 'Mixolydian', 'Locrian']
-        dia_xy_vec = [(-10,-7), (5,0), (0,-9), (-14,6), (-15,1), (5,-8), (2,6)]
+        dia_xy_vec = [(-6,7), (6,0), (-16,-1), (8,-1), (-12,-5), (-2,7), (2,6)]
 
         thaats = ['Asavari', 'Bhairav', 'Bhairavi', 'Bilawal', 'Kalyan', 'Khafi', 'Khamaj', 'Marwa', 'Purvi', 'Todi']
-        tha_xy_vec = [(-5,-7), (-9,5), (-19,1), (7,-7), (-2,5), (-9,-5), (-4,-12), (-6.5,-5.2), (-14,-3), (-5,6)]
+        tha_xy_vec = [(5,-7), (9,-2), (9,-4), (-7,-14), (1,-6), (-12,2), (-10,4), (-2.5,-7.2), (17,-2), (5,-8)]
 
 #       other_scales = ["Nev'eser Makam", "Maqam Sultani Yakah", "Mela Chitrambari", "Tsinganikos",
 #                       "Mela Pavani", "Dastgah-e Homayun", "Maqam Nakriz", "Mela Kantamani", "Huzzam Makam", "Maqam Saba"]
@@ -558,7 +562,7 @@ def fig6(df, n=7, eps=2, min_samp=5, n_ex=4, seed=81595, annot=True, embed_alg='
 #       for s in other_scales:
         for s in melakarta:
             i = np.where(df.loc[df.n_notes==n, 'Name']==s)[0][0]
-            ax3[2].annotate(s, (X[i], Y[i]), (X[i] - 23, Y[i] - 13), arrowprops={'arrowstyle':'->'}, color='k')
+            ax3[2].annotate(s, (X[i], Y[i]), (X[i] - 23, Y[i] - 18), arrowprops={'arrowstyle':'->'}, color='k')
 
 
 
