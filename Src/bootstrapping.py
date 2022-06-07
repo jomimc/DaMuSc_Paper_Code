@@ -187,7 +187,7 @@ def boot_int_prob_lognorm_all(refresh=True, nrep=1000):
         _ = boot_int_prob_lognorm(df.loc[idx_list[0]], path, refresh=refresh, mode="resample", nrep=nrep)
 
 
-def get_step_int_dist(df, ysamp='step_int', xsamp='SocID', s=5, dx=30):
+def get_step_int_dist(df, ysamp='Intervals', xsamp='SocID', s=5, dx=30):
     Y = utils.sample_df_value(df, ysamp, xsamp, s)
     bins = np.arange(0, 5000, 10)
     dx = np.diff(bins[:2])
@@ -203,7 +203,7 @@ def generate_step_int_dist(df, xsamp, ysamp, nsamp, nrep=1000):
                     yield df, y, x, n
 
 
-def boot_step_int(refresh=True, nrep=1000, nsamp=[5], ysamp=['step_int'], xsamp=['SocID']):
+def boot_step_int(refresh=True, nrep=1000, nsamp=[5], ysamp=['Intervals'], xsamp=['SocID']):
     path = PATH_DATA.joinpath(f"step_int_density.npy")
     if path.exists() and not refresh:
         return np.load(path)
@@ -253,19 +253,19 @@ def get_grid_close_far():
 
 
 def boot_all():
-    df = process_csv.process_data()
-    _ = scale_degree(df)
-    for ysamp in ['step_intervals', 'scale', 'tonic_intervals', 'all_intervals']:
-        _ = boot_list(df, ysamp)
-    boot_int_prob_lognorm_all()
+#   df = process_csv.process_data()
+#   _ = scale_degree(df)
+#   for ysamp in ['step_intervals', 'scale', 'tonic_intervals', 'all_intervals']:
+#       _ = boot_list(df, ysamp)
+#   boot_int_prob_lognorm_all()
     boot_step_int()
 
 
 if __name__ == "__main__":
 
-#   boot_all()
+    boot_all()
 #   boot_int_prob_lognorm_all(refresh=False)
-    get_grid_close_far()
+#   get_grid_close_far()
 
 #   run_umap()
 

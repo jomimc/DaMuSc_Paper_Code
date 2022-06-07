@@ -268,7 +268,7 @@ def sample_df_index(df, xsamp='SocID', s=5):
 def sample_df_value(df, ysamp='scale', xsamp='SocID', s=5):
     out = []
     for c in df[xsamp].unique():
-        if ysamp == 'scale':
+        if ysamp in ['scale', 'Intervals']:
             Y = df.loc[df[xsamp]==c, ysamp]
             out.extend([x for y in np.random.choice(Y, replace=False, size=min(s, len(Y))) for x in y])
         elif ysamp == 'step_intervals':
