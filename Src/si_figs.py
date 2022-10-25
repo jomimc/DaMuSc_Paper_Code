@@ -25,7 +25,7 @@ from sklearn.cluster import DBSCAN
 from sklearn.manifold import TSNE
 
 import octave as OC
-import new_figs
+import main_figs
 import process_csv
 import utils
 
@@ -127,7 +127,7 @@ def si5(df):
 
     for a in ax:
         a.set_xlim(0, 3000)
-        new_figs.set_xticks(a, 600, 200, '%d')
+        main_figs.set_xticks(a, 600, 200, '%d')
         a.grid()
         a.set_ylabel('Probability')
         a.set_xlabel('Interval size / cents')
@@ -162,7 +162,7 @@ def si6():
     w2_list = [5, 10, 15, 20, 30, 40]
     for i, w1 in enumerate(w1_list):
         w2 = 10
-        m1, lo1, hi1, m2, lo2, hi2 = new_figs.load_interval_data([f"../IntStats/0_w1{w1}_w2{w2}_I{i:04d}.npy" for i in ints])
+        m1, lo1, hi1, m2, lo2, hi2 = main_figs.load_interval_data([f"../IntStats/0_w1{w1}_w2{w2}_I{i:04d}.npy" for i in ints])
         ax[i].plot(ints, m1, '-', label='Support', color=col[0])
         ax[i].fill_between(ints, lo1, hi1, color='grey')
         ax[i].plot(ints, m2, ':', label='Against', color=col[1])
@@ -192,8 +192,8 @@ def si7(df):
     ax[5,1].set_xlabel('Note / cents')
     for i in range(6):
         ax[i,0].set_ylabel("Density")
-        new_figs.set_xticks(ax[i,0], 100, 50, '%d')#0.005, 0.00125, '%4.3f')
-        new_figs.set_xticks(ax[i,1], 200, 100, '%d')#0.001, 0.00025, '%5.3f')
+        main_figs.set_xticks(ax[i,0], 100, 50, '%d')#0.005, 0.00125, '%4.3f')
+        main_figs.set_xticks(ax[i,1], 200, 100, '%d')#0.001, 0.00025, '%5.3f')
 
         lo, hi = ax[i,0].get_ylim()
         ax[i,0].set_ylim(0, hi)
@@ -614,7 +614,7 @@ def si10(df, dx=20, n=5):
 
     xmaj = [200, 200, 200, 200, 50, 100]
     for x, a in zip(xmaj, ax[:n-1] + ax[5:]):
-        new_figs.set_xticks(a, x, x/2, '%d')
+        main_figs.set_xticks(a, x, x/2, '%d')
 
 #   ax[2].set_xticklabels(['', 250, 500, 750, ''])
 
@@ -784,7 +784,127 @@ def tuning_variability_extra():
     fig.savefig(PATH_FIG.joinpath("si14.pdf"), bbox_inches='tight')
 
 
+#####################################################################
+### SI 15
 
 
+def si15(df, inst):
+    fig = plt.figure(figsize=(12,9))
+    gs = GridSpec(5,4, height_ratios=[1, 1, .3, 1, 1])
+    ax = np.array([fig.add_subplot(gs[i//4+i//8,i%4]) for i in range(16)]).reshape(2,8)
+    fig.subplots_adjust(wspace=0.4, hspace=0.2)
+    fig.delaxes(ax[1,6])
+    fig.delaxes(ax[1,7])
+
+    bins = np.arange(0, 710, 10)
+    X = bins[:-1] + 5
+    R = df.Region.unique()
+    for i in range(R.size):
+#       for (j, d, xc) in zip([0,1], [inst, df], ['Intervals', 'step_intervals']):
+        for (j, d, xc) in zip([0,1], [inst, df.loc[df.Theory=='Y']], ['Intervals', 'step_intervals']):
+            if ((j == 1) & (i >= 6)):
+                continue
+            hist = np.histogram([x for y in d.loc[d.Region==R[i], xc] for x in y], bins=bins)[0]
+            hist = hist / hist.sum()
+            for k in range(R.size):
+                if ((j == 1) & (k >= 6)):
+                    continue
+                ax[j,k].plot(X, hist, '-k', alpha=0.3)
+            
+    for i in range(R.size):
+        for (j, d, xc) in zip([0,1], [inst, df.loc[df.Theory=='Y']], ['Intervals', 'step_intervals']):
+            if ((j == 1) & (i >= 6)):
+                continue
+            hist = np.histogram([x for y in d.loc[d.Region==R[i], xc] for x in y], bins=bins)[0]
+            hist = hist / hist.sum()
+            ax[j,i].plot(X, hist, '-', c=sns.color_palette('husl', 8)[i], label=R[i])
+            ax[j,i].legend(loc='best', frameon=False)
+            if i >= 4:
+                ax[j,i].set_xlabel("Step interval / cents")
+            ax[j,i].set_ylabel("Frequency")
+            ax[j,i].set_xlim(-5, 620)
+            ax[j,i].spines['right'].set_visible(False)
+            ax[j,i].spines['top'].set_visible(False)
+    ax[0,0].set_title("Measured scales")
+    ax[1,0].set_title("Theory scales")
+
+    fs = 14
+    for i, b in zip([0,1], 'AB'):
+        ax[i,0].text(-0.2, 1.05, b, transform=ax[i,0].transAxes, fontsize=fs)
+
+    fig.savefig(PATH_FIG.joinpath("si15.pdf"), bbox_inches='tight')
+
+
+def get_distances(df, scale, Reg):
+    sdist = cdist(scale, scale, metric='cityblock') / (scale.shape[1] - 1)
+    idx = {r:df.Region == r for r in Reg}
+    out = defaultdict(dict)
+    for i in range(len(Reg)):
+        for j in range(i, len(Reg)):
+            sd = sdist[idx[Reg[i]]][:, idx[Reg[j]]]
+            sd = sd[sd>0].ravel()
+            out[Reg[i]][Reg[j]] = sd 
+            out[Reg[j]][Reg[i]] = sd
+    return out
+
+
+def si16(df, n=7, eps=2, min_samp=5, n_ex=4, seed=52542, annot=True, embed_alg='tsne'):
+    if seed == 0:
+        seed = int(str(time.time()).split('.')[1])
+    np.random.seed(seed)
+    print(seed)
+
+    Reg = ['South East Asia', 'Africa', 'South Asia', 'Western',
+            'Latin America', 'Middle East', 'East Asia', 'Oceania']
+    reg_val = df.loc[df.n_notes==n, 'Region'].values
+    col2 = sns.color_palette()
+    col = np.array(Dark2_8.hex_colors)
+    col_key = {r:c for r, c in zip(Reg, col)}
+    colors = np.array([col_key[r] for r in reg_val])
+
+    scale = np.array([x for x in df.loc[df.n_notes==n, 'scale']])[:,1:-1]
+    if embed_alg == 'tsne':
+        embedding = TSNE(perplexity=20).fit(scale).embedding_
+    elif embed_alg == 'umap':
+        embedding = get_umap_embedding(scale)
+    X, Y = embedding.T
+
+#   fig, ax = plt.subplots(4,4,figsize=(10,10))
+#   ax = ax.reshape(ax.size)
+    fig = plt.figure(figsize=(16,16))
+    fig.subplots_adjust(wspace=0.7, hspace=0.8)
+    gs = GridSpec(5,8, height_ratios=[1, 1, .1, .7, .7])
+    ax = [fig.add_subplot(gs[0,i*2:(i+1)*2]) for i in range(4)] + \
+         [fig.add_subplot(gs[1,i*2+1:(i+1)*2+1]) for i in range(3)] + \
+         [fig.add_subplot(gs[3,i*2:(i+1)*2]) for i in range(4)] + \
+         [fig.add_subplot(gs[4,i*2+1:(i+1)*2+1]) for i in range(3)]
+
+    Reg = ['South East Asia', 'Africa', 'South Asia', 'Western',
+            'Latin America', 'Middle East', 'East Asia']
+    sdist = get_distances(df.loc[df.n_notes==n], scale, Reg)
+    for i, r in enumerate(Reg):
+        ax[i].scatter(X, Y, s=30, c='grey', alpha=0.3)
+        idx = reg_val == r
+        ax[i].scatter(X[idx], Y[idx], s=30, c=colors[idx], alpha=0.9)
+
+        lbl = 'between-regions'
+        for j in range(len(Reg)):
+            if i == j:
+                sns.kdeplot(sdist[r][Reg[j]], color=col_key[r], ax=ax[7+i], label="within-region")
+            else:
+                sns.kdeplot(sdist[r][Reg[j]], color='k', ax=ax[7+i], alpha=0.3, label=lbl)
+                lbl = ''
+        ax[7+i].legend(loc='best', frameon=False)
+
+        ax[i].set_title(f"{r}", loc='left')
+        ax[7+i].set_title(f"{r}", loc='left')
+        ax[i].set_xlabel("tSNE dimension 1")
+        ax[i].set_ylabel("tSNE dimension 1")
+        ax[7+i].set_xlabel("Distance between scales / cents")
+
+    fs = 16
+    for i, b in zip([0,7], 'AB'):
+        ax[i].text(-0.2, 1.05, b, transform=ax[i].transAxes, fontsize=fs)
+    fig.savefig(PATH_FIG.joinpath("si16.pdf"), bbox_inches='tight')
 
 

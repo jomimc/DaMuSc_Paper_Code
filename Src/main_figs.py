@@ -114,7 +114,7 @@ def fig2(df):
     gdf = geopandas.GeoDataFrame(pd.DataFrame(data={'Country':countries, 'count':co, 'coord':coord}), geometry='coord')
     
 
-    Cont = ['Western', 'Middle East', 'South Asia', 'East Asia', 'South East Asia', 'Africa', 'Oceania', 'Latin America']
+    Cont = ['Latin America', 'Western', 'Africa', 'Middle East', 'South Asia', 'East Asia', 'South East Asia', 'Oceania']
     theory = [len(df.loc[(df.Theory=='Y')&(df.Region==c)]) for c in Cont]
     inst   = [len(df.loc[(df.Theory=='N')&(df.Region==c)]) for c in Cont]
 
@@ -122,10 +122,10 @@ def fig2(df):
 
     cont_df = geopandas.GeoDataFrame(pd.DataFrame(data={'Cont':Cont, 'count':theory, 'coord':cont_coord}), geometry='coord')
 
-    fig = plt.figure(figsize=(10,5))
-    gs = GridSpec(2,3, width_ratios=[1.0, 7.0, 1.0], height_ratios=[1,0.6])
+    fig = plt.figure(figsize=(14,5))
+    gs = GridSpec(2,3, width_ratios=[1.0, 0.1, 0.9], height_ratios=[0.6, 1])
     gs.update(wspace=0.1 ,hspace=0.10)
-    ax = [fig.add_subplot(gs[0,:]), fig.add_subplot(gs[1,1])]
+    ax = [fig.add_subplot(gs[:,0]), fig.add_subplot(gs[1,2])]
     col = np.array(Set2_8.mpl_colors)[[1,0]]
     col = [Set2_8.mpl_colors[1], "#4DA5E8"]
     ft1 = 12
@@ -151,9 +151,9 @@ def fig2(df):
     ax[1].set_xticks(X)
     [tick.label.set_fontsize(ft1) for tick in ax[1].xaxis.get_major_ticks()]
     [tick.label.set_fontsize(ft1) for tick in ax[1].yaxis.get_major_ticks()]
-    Cont = ['Western', 'Middle East', 'South Asia', 'East Asia', 'South East Asia', '     Africa    ', 'Oceania', 'Latin America']
+    Cont = ['Latin America', 'Western', '     Africa    ', 'Middle East', 'South Asia', 'East Asia', 'South East Asia', 'Oceania']
     ax[1].set_xticklabels(Cont, rotation=28, fontsize=ft1)
-    ax[1].legend(loc='upper right', frameon=False, fontsize=ft1)
+    ax[1].legend(loc='upper right', frameon=False, fontsize=ft1, bbox_to_anchor=(0.8, 1.2), ncol=2)
     ax[1].set_ylabel('Number of scales', fontsize=ft1+2)
     ax[1].set_ylim(0, 220)
 
